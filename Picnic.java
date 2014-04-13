@@ -21,16 +21,26 @@ public class Picnic {
      */
     static ArrayList<String> urls = new ArrayList<String>();
     static int numUrls = 0, pages = 0;
-    static String whatNeedToFind = "";
+    static String whatNeedToFind[];
     public static void main(String[] args)
     {
-        whatNeedToFind = "Ukraine"; //What need find
-        urls.add("http://www.nytimes.com/"); //site that we use
         if(args.length>0)
-            urls.set(0, args[0]);
-        if(args.length>1)
-            whatNeedToFind = args[1];
-        Thread newThread = new Thread(new findOnPage()); //first thread that implements finding
-        newThread.start(); //start finding on first page
+        {
+            if(!args[0].matches("http://.*"))
+                args[0] = "http://"+args[0];
+            urls.add(args[0]);
+            if(args.length>1)
+            {
+                whatNeedToFind = new String[args.length-1];
+                for(int i = 1; i<args.length; i++)
+                    whatNeedToFind[i-1] = args[i];
+                Thread newThread = new Thread(new findOnPage()); //first thread that implements finding
+                newThread.start(); //start finding on first page
+            }
+            else
+                System.out.println("You should use -jar <way_to_/picnic.jar> <url> <word> <word2>...<wordN>");
+        }
+        else
+            System.out.println("You should use -jar <way_to_/picnic.jar> <url> <word> <word2>...<wordN>");
     }
 }
