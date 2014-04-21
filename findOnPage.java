@@ -15,8 +15,20 @@ import java.net.URL;
  *
  * @author Rew1L
  */
-public class findOnPage implements Runnable
+public class findOnPage extends Thread
 {
+    int page;
+
+    /**
+     *
+     * @param prevPage
+     */
+    public findOnPage(int prevPage)
+    {
+        Picnic.indexOfNextPage++;
+        this.page = prevPage+1;
+        Picnic.konec++;
+    }
     @Override
     public void run()
     {
@@ -24,14 +36,16 @@ public class findOnPage implements Runnable
         {
             URL newUrl; 
             BufferedReader rd;
+            InputStream is;
             try
             {
                 newUrl = new URL(Picnic.urls.get(Picnic.numUrls)); //select last link that we found
-                InputStream is = newUrl.openConnection().getInputStream();
+                is = newUrl.openConnection().getInputStream();
                 rd = new BufferedReader(new InputStreamReader(is, "UTF-8")); //read page
             }
             catch(Exception ex)
             {
+                Picnic.konec--;
                 return;
             }
             int lineNum = 0; //count lines
@@ -40,50 +54,53 @@ public class findOnPage implements Runnable
             {
                 line = line.toLowerCase();//for better compare
                 lineNum++; //number of this line
-                if(line.contains("<a href=\""))
+                help.checkLink(line,this.page);
+                if(line.matches(".*(<p .*>|<h.? .*>)")) //finding in content and headers
                 {
-                    line = line.replaceAll(".*<a href=\"", ""); //select only link
-                    line = line.replaceAll("\".*","");
-                    if((!Picnic.urls.contains(line)) && (Picnic.pages < 4)) //depth of scaning
+                    while(line!=null)
                     {
-                        Picnic.urls.add(line); //adding new link
-                        Picnic.numUrls++;
-                        Thread newThread = new Thread(new findOnPage()); //new thread for finding on other page
-                        newThread.start();
-                    }
-                }
-                if(line.contains("<p>") || line.contains("<h")) //finding in content and headers
-                {
-                    while(true)
-                    {
+                        help.checkLink(line,this.page);
                         for(int i = 0; i< Picnic.whatNeedToFind.length; i++)
                         {
-                            if(line.contains(Picnic.whatNeedToFind[0])) //print line if it contains our word
+                            for(int g = i+1; g<Picnic.whatNeedToFind.length;g++)
                             {
-                                System.out.println("Ссылка: "+newUrl.toString());
-                                System.out.println("Строка: \""+lineNum+"\"\r\n");
-                                //line = line.replaceAll(".*>", "");
-                                //System.out.println(line+"\"\r\n");
+                                if(line.contains(help.getLineOfItems(i, g))) //print line if it contains our word
+                                {
+                                    if(Picnic.urlsFound.contains(newUrl.toString()))
+                                    {
+                                        int temp = Picnic.urlsFound.indexOf(newUrl.toString());
+                                        Picnic.urlIndex.set(temp, Picnic.urlIndex.get(temp)+(g-i));
+                                    }
+                                    else
+                                    {
+                                        Picnic.urlsFound.add(newUrl.toString());
+                                        Picnic.lines.add(Picnic.urlsFound.indexOf(newUrl.toString()), lineNum);
+                                        Picnic.urlIndex.add(Picnic.urlsFound.indexOf(newUrl.toString()), 1);
+                                        System.out.println("\r\nСсылка: "+newUrl.toString());
+                                        System.out.println("Строка: "+lineNum);
+                                    }
+                                }
                             }
-                            if(line.contains("</p>") || line.contains("</h")) //exit if tag finished
-                            {
-                                break;
-                            }
-                            lineNum++;
-                            line = rd.readLine();
                         }
+                        if(line.contains("</p>") || line.contains("</h")) //exit if tag finished
+                            break;
+                        lineNum++;
+                        line = rd.readLine();
+                        line = line.toLowerCase();
                     }
                 }
             }
+            is.close();
             rd.close();
         }
         catch(Exception ex)
         {
-            System.out.println(ex.toString());
+            System.out.println(ex.toString()+" in findOnPage.java");
+            
         }
         finally
         {
-            Picnic.pages++; //increment depth
+            Picnic.konec--;
         }
     }
     
